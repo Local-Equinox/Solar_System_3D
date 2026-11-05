@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="An interactive 3D model of the Solar System: the Sun, all eight planets and their major moons in motion against the real night sky.">
+  <title>Solar System 3D</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ffc46b'/%3E%3Cellipse cx='16' cy='16' rx='14' ry='5' fill='none' stroke='%23fff' stroke-opacity='.6' transform='rotate(-24 16 16)'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene" aria-label="3D view of the Solar System. Use the panel to choose a body with the keyboard."></canvas>
+
+  <!-- The UI is ordinary HTML above the canvas. Only #labels ignores the pointer. -->
+  <div id="labels" aria-hidden="true"></div>
+
+  <aside id="panel" aria-label="Celestial body information">
+    <div class="panel-bar">
+      <button id="panel-back" type="button">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" /></svg>
+        All bodies
+      </button>
+      <button id="panel-toggle" type="button" aria-expanded="true" aria-controls="panel-content" aria-label="Hide panel">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2" /><path d="M6.5 3v10" /></svg>
+        <span class="toggle-text">Bodies</span>
+      </button>
+    </div>
+    <div id="panel-content" aria-live="polite"></div>
+    <details class="credits">
+      <summary>Credits</summary>
+      <p>Planet, Sun and Earth’s Moon textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>, CC BY 4.0, from NASA data.</p>
+      <p>Other moons: NASA/JPL-Caltech/Space Science Institute, Lunar &amp; Planetary Institute, USGS.</p>
+      <p>Star catalog and constellation lines: <a href="https://github.com/ofrohn/d3-celestial" target="_blank" rel="noopener">d3-celestial</a>.</p>
+    </details>
+  </aside>
+
+  <section id="timebar" aria-label="Time controls">
+    <button id="pause" class="icon-button" type="button" aria-pressed="false" aria-label="Pause">
+      <svg class="icon-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3v10M11 3v10" /></svg>
+      <svg class="icon-play" viewBox="0 0 16 16" aria-hidden="true"><path class="solid" d="M5 3v10l8-5z" /></svg>
+    </button>
+    <div class="time-readout">
+      <time id="date"></time>
+      <span id="rate-label"></span>
+    </div>
+    <input id="rate" type="range" min="0" max="100" step="0.5" aria-label="Simulation speed">
+    <button id="now" class="text-button" type="button" title="Jump back to today's date">Today</button>
+  </section>
+
+  <section id="viewbar" aria-label="View controls">
+    <button id="toggle-constellations" class="icon-button" type="button" title="Constellations" aria-label="Constellations">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 11 6 5l4.5 2.5L13.5 3M6 5l1 8" /></svg>
+    </button>
+    <button id="toggle-labels" class="icon-button" type="button" title="Name labels" aria-label="Name labels">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 8 3l5 10M5 9.5h6" /></svg>
+    </button>
+    <button id="zoom-in" class="icon-button" type="button" title="Zoom in" aria-label="Zoom in">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+    </button>
+    <button id="zoom-out" class="icon-button" type="button" title="Zoom out" aria-label="Zoom out">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" /></svg>
+    </button>
+    <button id="reset-view" class="icon-button" type="button" title="Back to overview" aria-label="Back to overview">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2" /><circle cx="8" cy="8" r="6" /></svg>
+    </button>
+  </section>
+
+  <div id="loading" role="status" aria-label="Loading textures"><div id="loading-bar"></div></div>
+
+  <div id="fatal" role="alert" hidden>
+    <h1></h1>
+    <p></p>
+  </div>
+
+  <noscript><div id="noscript">This simulation needs JavaScript and WebGL.</div></noscript>
+
+  <script>
+    // Browsers refuse ES modules from file:// URLs, which would otherwise fail silently.
+    if (location.protocol === 'file:') {
+      var notice = document.getElementById('fatal');
+      notice.querySelector('h1').textContent = 'This page needs a local web server';
+      notice.querySelector('p').textContent = 'In the project folder, run: python3 -m http.server 8000 and open http://localhost:8000';
+      notice.hidden = false;
+    }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
