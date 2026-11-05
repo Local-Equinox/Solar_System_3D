@@ -12,7 +12,8 @@
     {
       "imports": {
         "three": "./vendor/three/three.module.js",
-        "three/addons/": "./vendor/three/examples/jsm/"
+        "three/addons/": "./vendor/three/examples/jsm/",
+        "rapier": "./vendor/rapier/rapier.mjs"
       }
     }
   </script>
@@ -35,11 +36,13 @@
       </button>
     </div>
     <div id="panel-content" aria-live="polite"></div>
+    <div id="panel-action"></div>
     <details class="credits">
       <summary>Credits</summary>
       <p>Planet, Sun and Earth’s Moon textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>, CC BY 4.0, from NASA data.</p>
       <p>Other moons: NASA/JPL-Caltech/Space Science Institute, Lunar &amp; Planetary Institute, USGS.</p>
       <p>Star catalog and constellation lines: <a href="https://github.com/ofrohn/d3-celestial" target="_blank" rel="noopener">d3-celestial</a>.</p>
+      <p>Physics: <a href="https://rapier.rs" target="_blank" rel="noopener">Rapier</a>. Display type: Bungee, by David Jonathan Ross.</p>
     </details>
   </aside>
 
@@ -63,6 +66,9 @@
     <button id="toggle-labels" class="icon-button" type="button" title="Name labels" aria-label="Name labels">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 8 3l5 10M5 9.5h6" /></svg>
     </button>
+    <button id="toggle-map" class="icon-button" type="button" title="System map (M)" aria-label="System map" aria-pressed="false">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="1.5" /><ellipse cx="8" cy="8" rx="6.5" ry="3" /><circle cx="13" cy="9.5" r=".6" class="solid" /></svg>
+    </button>
     <button id="zoom-in" class="icon-button" type="button" title="Zoom in" aria-label="Zoom in">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
     </button>
@@ -73,6 +79,19 @@
       <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2" /><circle cx="8" cy="8" r="6" /></svg>
     </button>
   </section>
+
+  <!-- Game HUD -->
+  <div id="hud-stats" aria-live="off"></div>
+  <div id="hud-prompt-area" aria-live="polite">
+    <button id="hud-prompt" type="button" hidden></button>
+    <div id="hud-warning" role="status" hidden></div>
+  </div>
+  <div id="hud-help"></div>
+  <div id="touch-controls" aria-hidden="true">
+    <div id="joystick"><div id="joystick-knob"></div></div>
+    <button id="touch-jump" type="button" tabindex="-1">Jump</button>
+  </div>
+  <div id="fade"></div>
 
   <div id="loading" role="status" aria-label="Loading textures"><div id="loading-bar"></div></div>
 

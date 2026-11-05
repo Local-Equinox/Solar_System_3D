@@ -203,6 +203,8 @@ export class Starfield {
     this.camera = new PerspectiveCamera();
     this.pixelRatio = pixelRatio;
     this.resolution = new Vector2(1, 1);
+    this.constellationsWanted = true;
+    this.groundView = false;
   }
 
   async load() {
@@ -219,6 +221,7 @@ export class Starfield {
     this.lines = buildConstellationLines(constellations);
     this.names = buildConstellationNames(constellations, this.pixelRatio, this.resolution);
     this.scene.add(this.stars, this.lines, this.names);
+    this._applyConstellations();
     this.setPixelRatio(this.pixelRatio);
   }
 
@@ -233,6 +236,18 @@ export class Starfield {
   }
 
   setConstellationsVisible(visible) {
+    this.constellationsWanted = visible;
+    this._applyConstellations();
+  }
+
+  /** Charts belong on the map and in flight. From the ground, the sky is just the stars. */
+  setGroundView(ground) {
+    this.groundView = ground;
+    this._applyConstellations();
+  }
+
+  _applyConstellations() {
+    const visible = this.constellationsWanted && !this.groundView;
     if (this.lines) this.lines.visible = visible;
     if (this.names) this.names.visible = visible;
   }

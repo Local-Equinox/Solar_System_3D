@@ -17,8 +17,13 @@ const _ndc = new Vector2();
 const _projected = new Vector3();
 
 export class Picker {
-  constructor(canvas, camera, system, { onSelect, onHover }) {
-    Object.assign(this, { canvas, camera, system, onSelect, onHover });
+  /**
+   * @param camera    camera in system coordinates, for comparing on-screen positions
+   * @param rayCamera camera in render space (see SolarSystem.setOrigin), matching the meshes
+   */
+  constructor(canvas, camera, rayCamera, system, { onSelect, onHover }) {
+    Object.assign(this, { canvas, camera, rayCamera, system, onSelect, onHover });
+    this.enabled = true;
     this.raycaster = new Raycaster();
     this.activePointers = new Map();
     this.wasMultiTouch = false;
@@ -50,7 +55,7 @@ export class Picker {
   _up(event) {
     const start = this.activePointers.get(event.pointerId);
     this._release(event);
-    if (!start || this.wasMultiTouch || event.button !== 0) return;
+    if (!this.enabled || !start || this.wasMultiTouch || event.button !== 0) return;
     const travel = Math.hypot(event.clientX - start.x, event.clientY - start.y);
     if (travel > TAP_MAX_TRAVEL_PX || performance.now() - start.time > TAP_MAX_MS) return;
     const body = this.pick(event.clientX, event.clientY, REACH_PX[event.pointerType] ?? REACH_PX.mouse);
@@ -60,6 +65,11 @@ export class Picker {
   /** Runs at most once a frame, however fast the mouse is reporting. */
   updateHover() {
     if (!this.hoverEvent) return;
+    if (!this.enabled) {
+      this.hoverEvent = null;
+      this._setHovered(null);
+      return;
+    }
     const { clientX, clientY } = this.hoverEvent;
     this.hoverEvent = null;
     this._setHovered(this.pick(clientX, clientY, REACH_PX.mouse));
@@ -77,7 +87,7 @@ export class Picker {
     const x = clientX - rect.left;
     const y = clientY - rect.top;
     _ndc.set((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1);
-    this.raycaster.setFromCamera(_ndc, this.camera);
+    this.raycaster.setFromCamera(_ndc, this.rayCamera);
     const [hit] = this.raycaster.intersectObjects(this.system.pickables, false);
     if (hit) return hit.object.userData.body;
     return this._nearestOnScreen(x, y, rect, reachPx);

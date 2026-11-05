@@ -79,6 +79,7 @@ export class Panel {
     this.system = system;
     this.onSelect = onSelect;
     this.content = root.querySelector('#panel-content');
+    this.actionSlot = root.querySelector('#panel-action');
     this.toggleButton = root.querySelector('#panel-toggle');
     this.liveFields = null;
     this.selected = null;
@@ -94,6 +95,33 @@ export class Panel {
     this.toggleButton.setAttribute('aria-expanded', String(open));
     this.toggleButton.setAttribute('aria-label', open ? 'Hide panel' : 'Show panel');
     this.onLayoutChange?.();
+  }
+
+  /**
+   * Sets the primary action below the details, such as Warp.
+   * @param action {label, onClick, disabled, note}, or null for none
+   */
+  setAction(action) {
+    const key = action ? `${action.label}|${action.disabled}|${action.note}` : '';
+    if (key === this.actionKey) {
+      this.action = action;
+      return;
+    }
+    this.actionKey = key;
+    this.action = action;
+    if (!action) {
+      this.actionSlot.replaceChildren();
+      return;
+    }
+    this.actionSlot.replaceChildren(...[
+      action.note ? el('p', { class: 'action-note' }, action.note) : null,
+      action.label ? el('button', {
+        class: 'action-button',
+        type: 'button',
+        ...(action.disabled ? { disabled: '' } : {}),
+        onclick: () => this.action?.onClick?.(),
+      }, action.label) : null,
+    ].filter(Boolean));
   }
 
   _bodyButton(body, extraClass = '') {

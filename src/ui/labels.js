@@ -25,6 +25,23 @@ export class Labels {
       return { body, element, x: NaN, y: NaN, halfWidth: (body.name.length * LABEL_CHAR_WIDTH_PX) / 2 + 4 };
     });
     this.placed = [];
+    this.suppressed = false;
+  }
+
+  /** Adds a label for something that isn't a body, such as the player's ship. */
+  addMarker(marker) {
+    const element = document.createElement('div');
+    element.className = 'label label-marker';
+    element.textContent = marker.name;
+    element.hidden = true;
+    this.container.append(element);
+    this.entries.unshift({ body: marker, element, x: NaN, y: NaN, halfWidth: (marker.name.length * LABEL_CHAR_WIDTH_PX) / 2 + 4 });
+  }
+
+  /** Hides all labels for views where they don't apply, without changing the user's preference. */
+  setSuppressed(suppressed) {
+    this.suppressed = suppressed;
+    this.container.hidden = suppressed || !this.enabled;
   }
 
   setSelected(body) {
@@ -34,11 +51,11 @@ export class Labels {
 
   setEnabled(enabled) {
     this.enabled = enabled;
-    this.container.hidden = !enabled;
+    this.container.hidden = this.suppressed || !enabled;
   }
 
   update(width, height) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.suppressed) return;
     const camera = this.camera;
     const pxPerUnit = height / (2 * Math.tan((camera.fov * Math.PI) / 360));
     const placed = this.placed;
@@ -81,6 +98,7 @@ export class Labels {
   }
 
   _isRelevant(body, distance) {
+    if (body.kind === 'marker') return body.isVisible(distance);
     if (body.kind !== 'moon') return true;
     const selected = this.selected;
     if (selected && (selected === body || selected === body.parent || selected.parent === body.parent)) return true;

@@ -19,7 +19,7 @@ import { KeplerOrbit, equatorialToScene } from '../astro.js';
 import { displayRadius, moonOrbitRadius } from '../scale.js';
 import {
   createAtmosphereMaterial, createEarthMaterial, createMarkerMaterial, createOrbitMaterial,
-  createRingMaterial, createSunMaterial,
+  createRingMaterial, createSunMaterial, SUN_POSITION,
 } from './materials.js';
 
 const DEG = Math.PI / 180;
@@ -102,7 +102,10 @@ class Body {
 
 export class SolarSystem {
   constructor(scene, renderer, startDays) {
-    this.scene = scene;
+    // Everything hangs off one root, which the floating origin moves. See setOrigin().
+    this.root = new Group();
+    scene.add(this.root);
+    this.scene = this.root;
     this.bodies = [];
     this.byId = new Map();
     this.pickables = [];
@@ -112,9 +115,9 @@ export class SolarSystem {
     this.loader = new TextureLoader();
     this.maxAnisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
 
-    scene.add(new AmbientLight(0xffffff, 0.05));
+    this.root.add(new AmbientLight(0xffffff, 0.05));
     // No distance falloff: on a compressed scale, real falloff would leave Neptune black.
-    scene.add(new PointLight(0xffffff, 3.1, 0, 0));
+    this.root.add(new PointLight(0xffffff, 3.1, 0, 0));
 
     for (const data of BODIES) this._addBody(data, startDays);
     this._addMarkers(renderer.getPixelRatio());
@@ -274,7 +277,6 @@ export class SolarSystem {
     const { inner, outer, texture } = body.data.ring;
     const geometry = new RingGeometry(inner, outer, 128, 1);
     const material = createRingMaterial(inner, outer);
-    material.uniforms.planetCenter.value = body.worldPosition;
     material.uniforms.planetRadius.value = body.radius;
     this._requestTexture(texture, true, (t) => { material.uniforms.map.value = t; }, 1);
     const ring = new Mesh(geometry, material);
@@ -307,9 +309,28 @@ export class SolarSystem {
     geometry.setAttribute('color', new BufferAttribute(colors, 3));
     geometry.setAttribute('size', new BufferAttribute(sizes, 1));
     this.markerMaterial = createMarkerMaterial(pixelRatio);
-    const markers = new Points(geometry, this.markerMaterial);
-    markers.frustumCulled = false;
-    this.scene.add(markers);
+    this.markers = new Points(geometry, this.markerMaterial);
+    this.markers.frustumCulled = false;
+    this.scene.add(this.markers);
+  }
+
+  /**
+   * Floating origin: the given system-space point renders at (0,0,0). Body positions in
+   * `worldPosition` stay in stable system coordinates; only what reaches the GPU is rebased, so
+   * vertices near the camera keep full 32-bit precision even out at Neptune.
+   */
+  setOrigin(position) {
+    this.root.position.copy(position).negate();
+    SUN_POSITION.value.copy(this.root.position);
+  }
+
+  /** Draws the system as the sky of `body`: its own globe, the map markers and paths are hidden. */
+  setSkyOf(body) {
+    this.markers.visible = !body;
+    for (const other of this.bodies) other.path && (other.path.visible = !body);
+    if (this.skyBody) this.skyBody.axis.visible = true;
+    if (body) body.axis.visible = false;
+    this.skyBody = body;
   }
 
   setPixelRatio(pixelRatio) {

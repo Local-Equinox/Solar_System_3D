@@ -1,7 +1,10 @@
 // Custom shaders. Everything here is lit analytically from the Sun at the world origin, so no
 // shadow maps or post-processing are needed. That keeps the app fast on phones.
 
-import { AdditiveBlending, BackSide, Color, DoubleSide, ShaderMaterial } from 'three';
+import { AdditiveBlending, BackSide, Color, DoubleSide, ShaderMaterial, Vector3 } from 'three';
+
+// Where the Sun is in render space. Rendering uses a floating origin, so this moves every frame.
+export const SUN_POSITION = { value: new Vector3() };
 
 const WORLD_VERTEX = /* glsl */ `
   varying vec2 vUv;
@@ -44,17 +47,17 @@ export function createSunMaterial() {
 /** Earth: daylight map on the lit side, city lights fading in across the terminator. */
 export function createEarthMaterial() {
   return new ShaderMaterial({
-    uniforms: { dayMap: { value: null }, nightMap: { value: null }, baseColor: { value: new Color('#3c5f8f') } },
+    uniforms: { dayMap: { value: null }, nightMap: { value: null }, sunPosition: SUN_POSITION },
     vertexShader: WORLD_VERTEX,
     fragmentShader: /* glsl */ `
       uniform sampler2D dayMap;
       uniform sampler2D nightMap;
-      uniform vec3 baseColor;
+      uniform vec3 sunPosition;
       varying vec2 vUv;
       varying vec3 vWorldNormal;
       varying vec3 vWorldPosition;
       void main() {
-        vec3 toSun = normalize(-vWorldPosition);
+        vec3 toSun = normalize(sunPosition - vWorldPosition);
         float light = dot(normalize(vWorldNormal), toSun);
         vec3 day = texture2D(dayMap, vUv).rgb;
         vec3 night = texture2D(nightMap, vUv).rgb;
@@ -70,17 +73,18 @@ export function createEarthMaterial() {
 /** A thin shell glowing at the limb on the daylight side, rendered from the inside. */
 export function createAtmosphereMaterial(color, strength) {
   return new ShaderMaterial({
-    uniforms: { color: { value: new Color(color) }, strength: { value: strength } },
+    uniforms: { color: { value: new Color(color) }, strength: { value: strength }, sunPosition: SUN_POSITION },
     vertexShader: WORLD_VERTEX,
     fragmentShader: /* glsl */ `
       uniform vec3 color;
       uniform float strength;
+      uniform vec3 sunPosition;
       varying vec3 vWorldNormal;
       varying vec3 vWorldPosition;
       void main() {
         vec3 normal = normalize(vWorldNormal);
         vec3 toCamera = normalize(cameraPosition - vWorldPosition);
-        vec3 toSun = normalize(-vWorldPosition);
+        vec3 toSun = normalize(sunPosition - vWorldPosition);
         float edge = clamp(-dot(normal, toCamera), 0.0, 1.0);
         float rim = smoothstep(0.0, 0.32, edge);
         float daylight = smoothstep(-0.35, 0.5, dot(normal, toSun));
@@ -102,14 +106,16 @@ export function createRingMaterial(innerRadius, outerRadius) {
       map: { value: null },
       inner: { value: innerRadius },
       outer: { value: outerRadius },
-      planetCenter: { value: null },
+      sunPosition: SUN_POSITION,
       planetRadius: { value: 1 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vLocal;
       varying vec3 vWorldPosition;
+      varying vec3 vPlanetCenter;
       void main() {
         vLocal = position;
+        vPlanetCenter = modelMatrix[3].xyz;
         vec4 world = modelMatrix * vec4(position, 1.0);
         vWorldPosition = world.xyz;
         gl_Position = projectionMatrix * viewMatrix * world;
@@ -119,15 +125,16 @@ export function createRingMaterial(innerRadius, outerRadius) {
       uniform sampler2D map;
       uniform float inner;
       uniform float outer;
-      uniform vec3 planetCenter;
+      uniform vec3 sunPosition;
+      varying vec3 vPlanetCenter;
       uniform float planetRadius;
       varying vec3 vLocal;
       varying vec3 vWorldPosition;
       void main() {
         float u = (length(vLocal.xy) - inner) / (outer - inner);
         vec4 ringColor = texture2D(map, vec2(u, 0.5));
-        vec3 toSun = normalize(-vWorldPosition);
-        vec3 fromCenter = vWorldPosition - planetCenter;
+        vec3 toSun = normalize(sunPosition - vWorldPosition);
+        vec3 fromCenter = vWorldPosition - vPlanetCenter;
         float along = dot(fromCenter, toSun);
         float offAxis = length(fromCenter - toSun * along);
         float lit = along > 0.0 ? 1.0 : smoothstep(planetRadius * 0.96, planetRadius * 1.04, offAxis);

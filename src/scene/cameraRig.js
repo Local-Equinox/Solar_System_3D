@@ -122,6 +122,29 @@ export class CameraRig {
     return direction.normalize();
   }
 
+  /** Chase-camera mode: orbit around a moving point instead of a body. */
+  follow(point, distance, direction) {
+    this.target = point;
+    this.flight = null;
+    this.pendingZoom = 0;
+    this.controls.enabled = true;
+    this.controls.minDistance = 0.09;
+    this.controls.target.copy(point.worldPosition);
+    this.camera.position.copy(point.worldPosition).addScaledVector(direction, distance);
+    this.lastTargetPosition.copy(point.worldPosition);
+  }
+
+  /** Swings the camera to a new offset direction around its target, keeping its distance. */
+  setOffsetDirection(direction) {
+    const distance = this.camera.position.distanceTo(this.controls.target);
+    this.camera.position.copy(this.controls.target).addScaledVector(direction, distance);
+  }
+
+  setFov(fov) {
+    this.camera.fov = fov;
+    this._applyViewOffset();
+  }
+
   zoomBy(factor) {
     this.pendingZoom += Math.log(factor);
   }
@@ -195,7 +218,7 @@ export class CameraRig {
       const surface = this.camera.position.distanceTo(body.worldPosition) - body.radius;
       if (surface < nearest) nearest = surface;
     }
-    const near = Math.min(4, Math.max(0.004, nearest * 0.3));
+    const near = Math.min(4, Math.max(0.002, nearest * 0.3));
     if (Math.abs(near - this.camera.near) / this.camera.near > 0.1) {
       this.camera.near = near;
       this.camera.updateProjectionMatrix();
